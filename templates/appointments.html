@@ -1,0 +1,210 @@
+{% extends "base.html" %}
+
+{% block title %}Appointments - SmartClinic OS{% endblock %}
+
+{% block extra_css %}
+<link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.css' rel='stylesheet' />
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-calendar3"></i> Appointments</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#appointmentModal" onclick="openNewAppointment()">
+            <i class="bi bi-plus-circle"></i> New Appointment
+        </button>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <div id="calendar"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Appointment Modal -->
+<div class="modal fade" id="appointmentModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">New Appointment</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="appointmentForm">
+                    <input type="hidden" id="appointmentId">
+                    <div class="mb-3">
+                        <label for="patientSelect" class="form-label">Patient</label>
+                        <select class="form-select" id="patientSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="doctorSelect" class="form-label">Doctor</label>
+                        <select class="form-select" id="doctorSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appointmentDate" class="form-label">Date</label>
+                        <input type="date" class="form-control" id="appointmentDate" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="appointmentTime" class="form-label">Time</label>
+                        <input type="time" class="form-control" id="appointmentTime" required>
+                    </div>
+                    <div id="conflictAlert" class="alert alert-warning d-none"></div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="cancelBtn" onclick="cancelAppointment()" style="display:none;">Cancel Appointment</button>
+                <button type="button" class="btn btn-primary" onclick="saveAppointment()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/index.global.min.js'></script>
+<script>
+let calendar;
+let patients = [];
+let doctors = [];
+
+async function loadData() {
+    patients = await fetch('/api/patients').then(r => r.json());
+    doctors = await fetch('/api/doctors').then(r => r.json());
+    
+    const patientSelect = document.getElementById('patientSelect');
+    patientSelect.innerHTML = '<option value="">Select Patient</option>' + 
+        patients.map(p => `<option value="${p.id}">${p.name}</option>`).join('');
+    
+    const doctorSelect = document.getElementById('doctorSelect');
+    doctorSelect.innerHTML = '<option value="">Select Doctor</option>' + 
+        doctors.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+document.addEventListener('DOMContentLoaded', async function() {
+    await loadData();
+    
+    const calendarEl = document.getElementById('calendar');
+    calendar = new FullCalendar.Calendar(calendarEl, {
+        initialView: 'timeGridWeek',
+        headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+        },
+        slotMinTime: '08:00:00',
+        slotMaxTime: '18:00:00',
+        allDaySlot: false,
+        editable: true,
+        selectable: true,
+        events: async function(info, successCallback) {
+            const appointments = await fetch(`/api/appointments?start=${info.startStr}&end=${info.endStr}`).then(r => r.json());
+            const events = appointments.map(a => ({
+                id: a.id,
+                title: `${a.patient_name} - Dr. ${a.doctor_name}`,
+                start: a.datetime,
+                backgroundColor: a.status === 'completed' ? '#28a745' : a.status === 'cancelled' ? '#dc3545' : '#0d6efd',
+                extendedProps: a
+            }));
+            successCallback(events);
+        },
+        select: function(info) {
+            openNewAppointment(info.startStr);
+        },
+        eventClick: function(info) {
+            openEditAppointment(info.event.extendedProps);
+        },
+        eventDrop: async function(info) {
+            await updateAppointmentTime(info.event.id, info.event.startStr);
+        }
+    });
+    
+    calendar.render();
+});
+
+function openNewAppointment(dateTime) {
+    document.getElementById('modalTitle').textContent = 'New Appointment';
+    document.getElementById('appointmentForm').reset();
+    document.getElementById('appointmentId').value = '';
+    document.getElementById('cancelBtn').style.display = 'none';
+    document.getElementById('conflictAlert').classList.add('d-none');
+    
+    if (dateTime) {
+        const date = new Date(dateTime);
+        document.getElementById('appointmentDate').value = date.toISOString().split('T')[0];
+        document.getElementById('appointmentTime').value = date.toTimeString().slice(0, 5);
+    }
+}
+
+function openEditAppointment(appointment) {
+    document.getElementById('modalTitle').textContent = 'Edit Appointment';
+    document.getElementById('appointmentId').value = appointment.id;
+    document.getElementById('patientSelect').value = appointment.patient_id;
+    document.getElementById('doctorSelect').value = appointment.doctor_id;
+    document.getElementById('appointmentDate').value = appointment.date;
+    document.getElementById('appointmentTime').value = appointment.time;
+    document.getElementById('cancelBtn').style.display = 'inline-block';
+    document.getElementById('conflictAlert').classList.add('d-none');
+    
+    new bootstrap.Modal(document.getElementById('appointmentModal')).show();
+}
+
+async function saveAppointment() {
+    const id = document.getElementById('appointmentId').value;
+    const data = {
+        patient_id: parseInt(document.getElementById('patientSelect').value),
+        doctor_id: parseInt(document.getElementById('doctorSelect').value),
+        date: document.getElementById('appointmentDate').value,
+        time: `${document.getElementById('appointmentDate').value}T${document.getElementById('appointmentTime').value}`
+    };
+    
+    try {
+        const response = await fetch(id ? `/api/appointments/${id}` : '/api/appointments', {
+            method: id ? 'PUT' : 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        
+        if (response.status === 409) {
+            const result = await response.json();
+            document.getElementById('conflictAlert').innerHTML = 
+                `Slot already booked. Suggested: ${result.suggested_slot.date} at ${result.suggested_slot.time}`;
+            document.getElementById('conflictAlert').classList.remove('d-none');
+            return;
+        }
+        
+        bootstrap.Modal.getInstance(document.getElementById('appointmentModal')).hide();
+        calendar.refetchEvents();
+    } catch (error) {
+        alert('Error saving appointment');
+    }
+}
+
+async function cancelAppointment() {
+    const id = document.getElementById('appointmentId').value;
+    if (!confirm('Cancel this appointment?')) return;
+    
+    await fetch(`/api/appointments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'cancelled' })
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('appointmentModal')).hide();
+    calendar.refetchEvents();
+}
+
+async function updateAppointmentTime(id, newDateTime) {
+    const date = new Date(newDateTime);
+    await fetch(`/api/appointments/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            date: date.toISOString().split('T')[0],
+            time: newDateTime
+        })
+    });
+}
+</script>
+{% endblock %}

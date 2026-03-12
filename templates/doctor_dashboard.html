@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Dashboard - SmartClinic OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-person-badge"></i> Doctor Dashboard</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Appointments Today</h5>
+                    <h2 id="appointmentsToday">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Waiting Patients</h5>
+                    <h2 id="waitingPatients">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Completed Consultations</h5>
+                    <h2 id="completedConsultations">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5><i class="bi bi-person-check"></i> Next Patient</h5>
+                </div>
+                <div class="card-body">
+                    <div id="nextPatient"></div>
+                    <button class="btn btn-success w-100 mt-3" id="callNextBtn" onclick="callNextPatient()">
+                        <i class="bi bi-telephone"></i> Call Next Patient
+                    </button>
+                </div>
+            </div>
+            
+            <div class="card mt-3">
+                <div class="card-header">
+                    <h5><i class="bi bi-clock-history"></i> Today's Schedule</h5>
+                </div>
+                <div class="card-body">
+                    <div id="todaySchedule"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-6">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-list-ol"></i> Patient Queue</h5>
+                </div>
+                <div class="card-body">
+                    <div id="queueList"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const socket = io();
+let currentQueue = [];
+
+async function loadDashboard() {
+    const appointments = await fetch('/api/appointments/today').then(r => r.json());
+    document.getElementById('appointmentsToday').textContent = appointments.length;
+    
+    const completed = appointments.filter(a => a.status === 'completed').length;
+    document.getElementById('completedConsultations').textContent = completed;
+    
+    currentQueue = await fetch('/api/queue').then(r => r.json());
+    const waiting = currentQueue.filter(q => q.status === 'waiting');
+    document.getElementById('waitingPatients').textContent = waiting.length;
+    
+    const nextPatient = waiting[0];
+    if (nextPatient) {
+        document.getElementById('nextPatient').innerHTML = `
+            <h4>${nextPatient.patient_name}</h4>
+            <p class="text-muted mb-0">Position: ${nextPatient.position}</p>
+            ${nextPatient.is_emergency ? '<span class="badge bg-danger">Emergency</span>' : ''}
+        `;
+        document.getElementById('callNextBtn').disabled = false;
+    } else {
+        document.getElementById('nextPatient').innerHTML = '<p class="text-muted">No patients waiting</p>';
+        document.getElementById('callNextBtn').disabled = true;
+    }
+    
+    const scheduleHtml = appointments.map(a => `
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-4 border-${a.status === 'completed' ? 'success' : 'primary'}">
+            <div>
+                <strong>${a.time}</strong> - ${a.patient_name}
+            </div>
+            <span class="badge bg-${a.status === 'completed' ? 'success' : 'primary'}">${a.status}</span>
+        </div>
+    `).join('');
+    document.getElementById('todaySchedule').innerHTML = scheduleHtml || '<p class="text-muted">No appointments</p>';
+    
+    const queueHtml = currentQueue.map((q, i) => `
+        <div class="d-flex justify-content-between align-items-center mb-3 p-3 border rounded ${q.status === 'in_consultation' ? 'bg-light' : ''}">
+            <div>
+                <strong>${i + 1}. ${q.patient_name}</strong>
+                ${q.is_emergency ? '<span class="badge bg-danger ms-2">Emergency</span>' : ''}
+                <br><small class="text-muted">${q.status}</small>
+            </div>
+            ${q.status === 'in_consultation' ? `
+                <button class="btn btn-sm btn-success" onclick="completeConsultation(${q.id})">
+                    <i class="bi bi-check-circle"></i> Complete
+                </button>
+            ` : ''}
+        </div>
+    `).join('');
+    document.getElementById('queueList').innerHTML = queueHtml || '<p class="text-muted">No patients in queue</p>';
+}
+
+async function callNextPatient() {
+    const waiting = currentQueue.filter(q => q.status === 'waiting');
+    if (waiting.length === 0) return;
+    
+    const nextPatient = waiting[0];
+    await fetch(`/api/queue/${nextPatient.id}/call`, { method: 'POST' });
+    loadDashboard();
+}
+
+async function completeConsultation(queueId) {
+    await fetch(`/api/queue/${queueId}/complete`, { method: 'POST' });
+    loadDashboard();
+}
+
+socket.on('queue_updated', () => loadDashboard());
+
+loadDashboard();
+</script>
+{% endblock %}

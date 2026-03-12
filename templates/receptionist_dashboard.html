@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+
+{% block title %}Receptionist Dashboard - SmartClinic OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <h2 class="mb-4"><i class="bi bi-speedometer2"></i> Receptionist Dashboard</h2>
+    
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card text-white bg-primary">
+                <div class="card-body">
+                    <h5 class="card-title">Today's Appointments</h5>
+                    <h2 id="todayAppointments">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-warning">
+                <div class="card-body">
+                    <h5 class="card-title">Waiting Patients</h5>
+                    <h2 id="waitingPatients">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-success">
+                <div class="card-body">
+                    <h5 class="card-title">Completed Visits</h5>
+                    <h2 id="completedVisits">0</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card text-white bg-info">
+                <div class="card-body">
+                    <h5 class="card-title">Waitlist</h5>
+                    <h2 id="waitlistCount">0</h2>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="row">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-calendar3"></i> Today's Schedule</h5>
+                </div>
+                <div class="card-body">
+                    <div id="todaySchedule"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-header">
+                    <h5><i class="bi bi-people"></i> Current Queue</h5>
+                </div>
+                <div class="card-body">
+                    <div id="queuePreview"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const socket = io();
+
+async function loadDashboard() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const appointments = await fetch(`/api/appointments/today`).then(r => r.json());
+    document.getElementById('todayAppointments').textContent = appointments.length;
+    
+    const completed = appointments.filter(a => a.status === 'completed').length;
+    document.getElementById('completedVisits').textContent = completed;
+    
+    const queue = await fetch('/api/queue').then(r => r.json());
+    document.getElementById('waitingPatients').textContent = queue.filter(q => q.status === 'waiting').length;
+    
+    const waitlist = await fetch('/api/waitlist').then(r => r.json());
+    document.getElementById('waitlistCount').textContent = waitlist.length;
+    
+    const scheduleHtml = appointments.map(a => `
+        <div class="d-flex justify-content-between align-items-center mb-2 p-2 border-start border-4 border-${a.status === 'completed' ? 'success' : a.status === 'cancelled' ? 'danger' : 'primary'}">
+            <div>
+                <strong>${a.time}</strong> - ${a.patient_name}
+                <br><small class="text-muted">Dr. ${a.doctor_name}</small>
+            </div>
+            <span class="badge bg-${a.status === 'completed' ? 'success' : a.status === 'cancelled' ? 'danger' : 'primary'}">${a.status}</span>
+        </div>
+    `).join('');
+    document.getElementById('todaySchedule').innerHTML = scheduleHtml || '<p class="text-muted">No appointments today</p>';
+    
+    const queueHtml = queue.slice(0, 5).map((q, i) => `
+        <div class="mb-2">
+            <strong>${i + 1}.</strong> ${q.patient_name}
+            ${q.is_emergency ? '<span class="badge bg-danger ms-2">Emergency</span>' : ''}
+        </div>
+    `).join('');
+    document.getElementById('queuePreview').innerHTML = queueHtml || '<p class="text-muted">No patients in queue</p>';
+}
+
+socket.on('queue_updated', () => loadDashboard());
+
+loadDashboard();
+setInterval(loadDashboard, 30000);
+</script>
+{% endblock %}
