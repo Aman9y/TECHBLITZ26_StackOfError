@@ -84,6 +84,8 @@ def create_appointment():
         patient_id=data['patient_id'],
         date=appointment_date,
         time=appointment_time,
+        end_time=datetime.fromisoformat(data['end_time']).time() if 'end_time' in data else None,
+        duration=data.get('duration', 30),
         status='booked',
         is_followup=data.get('is_followup', False),
         parent_appointment_id=data.get('parent_appointment_id'),

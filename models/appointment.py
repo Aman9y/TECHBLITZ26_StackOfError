@@ -9,6 +9,8 @@ class Appointment(db.Model):
     patient_id = db.Column(db.Integer, db.ForeignKey('patients.id'), nullable=False)
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
+    end_time = db.Column(db.Time, nullable=True)
+    duration = db.Column(db.Integer, default=30)
     status = db.Column(db.String(20), default='booked')
     is_followup = db.Column(db.Boolean, default=False)
     parent_appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'), nullable=True)
@@ -27,6 +29,8 @@ class Appointment(db.Model):
             'patient_phone': self.patient.phone if self.patient else None,
             'date': self.date.isoformat(),
             'time': self.time.strftime('%H:%M'),
+            'end_time': self.end_time.strftime('%H:%M') if self.end_time else None,
+            'duration': self.duration,
             'status': self.status,
             'is_followup': self.is_followup,
             'parent_appointment_id': self.parent_appointment_id,
