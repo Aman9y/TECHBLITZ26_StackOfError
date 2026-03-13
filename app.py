@@ -13,6 +13,7 @@ app = Flask(__name__)
 app.config.from_object(Config)
 
 socketio = SocketIO(app, cors_allowed_origins="*")
+app.extensions['socketio'] = socketio
 
 init_db(app)
 

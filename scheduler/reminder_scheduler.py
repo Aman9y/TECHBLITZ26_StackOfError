@@ -53,10 +53,15 @@ def check_and_send_reminders():
         print(f"[{now.strftime('%H:%M:%S')}] Reminder check completed")
 
 scheduler = BackgroundScheduler()
+scheduler_started = False
 
 def init_scheduler(app):
+    global scheduler_started
+    if scheduler_started:
+        return
+    
     scheduler.app = app
-    # Run every 1 minute for testing (change to hours=1 for production)
     scheduler.add_job(func=check_and_send_reminders, trigger="interval", minutes=1)
     scheduler.start()
+    scheduler_started = True
     print("✓ Reminder scheduler started (runs every 1 minute)")

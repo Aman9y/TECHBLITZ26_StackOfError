@@ -27,7 +27,8 @@ def checkin_patient():
         data.get('is_emergency', False)
     )
     
-    from app import socketio
+    from flask import current_app
+    socketio = current_app.extensions['socketio']
     socketio.emit('queue_updated', {'action': 'PATIENT_CHECKED_IN', 'data': queue_entry.to_dict()})
     
     return jsonify(queue_entry.to_dict()), 201
@@ -38,7 +39,8 @@ def call_patient(queue_id):
     queue_entry.status = 'in_consultation'
     db.session.commit()
     
-    from app import socketio
+    from flask import current_app
+    socketio = current_app.extensions['socketio']
     socketio.emit('queue_updated', {'action': 'PATIENT_CALLED', 'data': queue_entry.to_dict()})
     
     return jsonify(queue_entry.to_dict())
@@ -56,7 +58,8 @@ def complete_consultation(queue_id):
     
     db.session.commit()
     
-    from app import socketio
+    from flask import current_app
+    socketio = current_app.extensions['socketio']
     socketio.emit('queue_updated', {'action': 'CONSULTATION_COMPLETED', 'data': queue_entry.to_dict()})
     
     return jsonify(queue_entry.to_dict())
@@ -68,7 +71,8 @@ def reorder_queue(queue_id):
     queue_entry.position = data['position']
     db.session.commit()
     
-    from app import socketio
+    from flask import current_app
+    socketio = current_app.extensions['socketio']
     socketio.emit('queue_updated', {'action': 'QUEUE_REORDERED'})
     
     return jsonify(queue_entry.to_dict())
@@ -80,7 +84,8 @@ def mark_emergency(queue_id):
     queue_entry.position = 0
     db.session.commit()
     
-    from app import socketio
+    from flask import current_app
+    socketio = current_app.extensions['socketio']
     socketio.emit('queue_updated', {'action': 'EMERGENCY_MARKED', 'data': queue_entry.to_dict()})
     
     return jsonify(queue_entry.to_dict())
