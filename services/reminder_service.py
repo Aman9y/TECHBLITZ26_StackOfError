@@ -45,6 +45,15 @@ class ReminderService:
         patient = appointment.patient
         doctor = appointment.doctor
         
+        print(f"\n{'='*60}")
+        print(f"📧 PREPARING REMINDER")
+        print(f"{'='*60}")
+        print(f"Patient: {patient.name}")
+        print(f"Phone: {patient.phone}")
+        print(f"Doctor: {doctor.name}")
+        print(f"Appointment: {appointment.date} at {appointment.time}")
+        print(f"{'='*60}\n")
+        
         time_str = appointment.time.strftime('%I:%M %p')
         date_str = appointment.date.strftime('%B %d, %Y')
         
