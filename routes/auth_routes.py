@@ -40,11 +40,13 @@ def register():
     if request.method == 'POST':
         from werkzeug.security import generate_password_hash
         from database import db
+        from models.doctor import Doctor
         
         name = request.form.get('name')
         email = request.form.get('email')
         password = request.form.get('password')
         role = request.form.get('role')
+        specialization = request.form.get('specialization', '')
         
         if User.query.filter_by(email=email).first():
             flash('Email already registered', 'error')
@@ -58,6 +60,15 @@ def register():
         )
         db.session.add(user)
         db.session.commit()
+        
+        # If registering as doctor, create doctor profile
+        if role == 'doctor':
+            doctor = Doctor(
+                name=name,
+                specialization=specialization or 'General Physician'
+            )
+            db.session.add(doctor)
+            db.session.commit()
         
         flash('Registration successful! Please login.', 'success')
         return redirect(url_for('auth.login'))
