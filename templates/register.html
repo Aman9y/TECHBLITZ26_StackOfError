@@ -30,11 +30,16 @@
                         </div>
                         <div class="mb-3">
                             <label for="role" class="form-label">Role</label>
-                            <select class="form-select" id="role" name="role" required>
+                            <select class="form-select" id="role" name="role" required onchange="toggleSpecialization()">
                                 <option value="">Select Role</option>
                                 <option value="receptionist">Receptionist</option>
                                 <option value="doctor">Doctor</option>
                             </select>
+                        </div>
+                        <div class="mb-3" id="specializationField" style="display:none;">
+                            <label for="specialization" class="form-label">Specialization</label>
+                            <input type="text" class="form-control" id="specialization" name="specialization" placeholder="e.g., Cardiologist, Pediatrician">
+                            <small class="text-muted">Optional - defaults to General Physician</small>
                         </div>
                         <button type="submit" class="btn btn-primary w-100">Register</button>
                     </form>
@@ -47,4 +52,16 @@
         </div>
     </div>
 </div>
+
+<script>
+function toggleSpecialization() {
+    const role = document.getElementById('role').value;
+    const specializationField = document.getElementById('specializationField');
+    if (role === 'doctor') {
+        specializationField.style.display = 'block';
+    } else {
+        specializationField.style.display = 'none';
+    }
+}
+</script>
 {% endblock %}

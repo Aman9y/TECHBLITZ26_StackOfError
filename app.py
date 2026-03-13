@@ -40,6 +40,29 @@ def test_reminder(appointment_id):
             return "✗ Failed to send reminder. Check console for errors."
     return "Appointment not found"
 
+# Admin route to sync doctor users with doctor profiles
+@app.route('/admin/sync-doctors')
+def sync_doctors():
+    from models.user import User
+    from models.doctor import Doctor
+    from database import db
+    
+    doctor_users = User.query.filter_by(role='doctor').all()
+    synced = 0
+    
+    for user in doctor_users:
+        existing_doctor = Doctor.query.filter_by(name=user.name).first()
+        if not existing_doctor:
+            doctor = Doctor(
+                name=user.name,
+                specialization='General Physician'
+            )
+            db.session.add(doctor)
+            synced += 1
+    
+    db.session.commit()
+    return f"✓ Synced {synced} doctor(s). Total doctors: {Doctor.query.count()}"
+
 @socketio.on('connect')
 def handle_connect():
     print('Client connected')
