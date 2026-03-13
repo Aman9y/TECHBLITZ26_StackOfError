@@ -35,6 +35,35 @@ def login():
     
     return render_template('login.html')
 
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        from werkzeug.security import generate_password_hash
+        from database import db
+        
+        name = request.form.get('name')
+        email = request.form.get('email')
+        password = request.form.get('password')
+        role = request.form.get('role')
+        
+        if User.query.filter_by(email=email).first():
+            flash('Email already registered', 'error')
+            return redirect(url_for('auth.register'))
+        
+        user = User(
+            name=name,
+            email=email,
+            password=generate_password_hash(password),
+            role=role
+        )
+        db.session.add(user)
+        db.session.commit()
+        
+        flash('Registration successful! Please login.', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('register.html')
+
 @auth_bp.route('/logout')
 def logout():
     session.clear()
