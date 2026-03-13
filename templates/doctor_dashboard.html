@@ -118,9 +118,14 @@ async function loadDashboard() {
                 <br><small class="text-muted">${q.status}</small>
             </div>
             ${q.status === 'in_consultation' ? `
-                <button class="btn btn-sm btn-success" onclick="completeConsultation(${q.id})">
-                    <i class="bi bi-check-circle"></i> Complete
-                </button>
+                <div>
+                    <button class="btn btn-sm btn-success" onclick="completeConsultation(${q.id})">
+                        <i class="bi bi-check-circle"></i> Complete
+                    </button>
+                    <button class="btn btn-sm btn-info" onclick="scheduleFollowup(${q.patient_id}, ${q.appointment_id})">
+                        <i class="bi bi-calendar-plus"></i> Follow-up
+                    </button>
+                </div>
             ` : ''}
         </div>
     `).join('');
@@ -139,6 +144,13 @@ async function callNextPatient() {
 async function completeConsultation(queueId) {
     await fetch(`/api/queue/${queueId}/complete`, { method: 'POST' });
     loadDashboard();
+}
+
+function scheduleFollowup(patientId, appointmentId) {
+    const notes = prompt('Follow-up reason (optional):');
+    if (notes === null) return;
+    
+    window.location.href = `/appointments?followup=true&patient=${patientId}&parent=${appointmentId || ''}&notes=${encodeURIComponent(notes)}`;
 }
 
 socket.on('queue_updated', () => loadDashboard());

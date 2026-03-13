@@ -49,6 +49,16 @@
                         <label for="appointmentTime" class="form-label">Time</label>
                         <input type="time" class="form-control" id="appointmentTime" required>
                     </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="isFollowup" onchange="toggleFollowupNotes()">
+                        <label class="form-check-label" for="isFollowup">
+                            This is a follow-up appointment
+                        </label>
+                    </div>
+                    <div class="mb-3" id="followupNotesField" style="display:none;">
+                        <label for="followupNotes" class="form-label">Follow-up Notes</label>
+                        <textarea class="form-control" id="followupNotes" rows="2" placeholder="Reason for follow-up..."></textarea>
+                    </div>
                     <div id="conflictAlert" class="alert alert-warning d-none"></div>
                 </form>
             </div>
@@ -102,9 +112,9 @@ document.addEventListener('DOMContentLoaded', async function() {
             const appointments = await fetch(`/api/appointments?start=${info.startStr}&end=${info.endStr}`).then(r => r.json());
             const events = appointments.map(a => ({
                 id: a.id,
-                title: `${a.patient_name} - Dr. ${a.doctor_name}`,
+                title: `${a.patient_name} - Dr. ${a.doctor_name}${a.is_followup ? ' (F/U)' : ''}`,
                 start: a.datetime,
-                backgroundColor: a.status === 'completed' ? '#28a745' : a.status === 'cancelled' ? '#dc3545' : '#0d6efd',
+                backgroundColor: a.status === 'completed' ? '#28a745' : a.status === 'cancelled' ? '#dc3545' : a.is_followup ? '#17a2b8' : '#0d6efd',
                 extendedProps: a
             }));
             successCallback(events);
@@ -129,12 +139,19 @@ function openNewAppointment(dateTime) {
     document.getElementById('appointmentId').value = '';
     document.getElementById('cancelBtn').style.display = 'none';
     document.getElementById('conflictAlert').classList.add('d-none');
+    document.getElementById('isFollowup').checked = false;
+    document.getElementById('followupNotesField').style.display = 'none';
     
     if (dateTime) {
         const date = new Date(dateTime);
         document.getElementById('appointmentDate').value = date.toISOString().split('T')[0];
         document.getElementById('appointmentTime').value = date.toTimeString().slice(0, 5);
     }
+}
+
+function toggleFollowupNotes() {
+    const isFollowup = document.getElementById('isFollowup').checked;
+    document.getElementById('followupNotesField').style.display = isFollowup ? 'block' : 'none';
 }
 
 function openEditAppointment(appointment) {
@@ -156,7 +173,9 @@ async function saveAppointment() {
         patient_id: parseInt(document.getElementById('patientSelect').value),
         doctor_id: parseInt(document.getElementById('doctorSelect').value),
         date: document.getElementById('appointmentDate').value,
-        time: `${document.getElementById('appointmentDate').value}T${document.getElementById('appointmentTime').value}`
+        time: `${document.getElementById('appointmentDate').value}T${document.getElementById('appointmentTime').value}`,
+        is_followup: document.getElementById('isFollowup').checked,
+        followup_notes: document.getElementById('followupNotes').value
     };
     
     try {
@@ -169,7 +188,7 @@ async function saveAppointment() {
         if (response.status === 409) {
             const result = await response.json();
             document.getElementById('conflictAlert').innerHTML = 
-                `Slot already booked. Suggested: ${result.suggested_slot.date} at ${result.suggested_slot.time}`;
+                `${result.error}. Suggested: ${result.suggested_slot.date} at ${result.suggested_slot.time}`;
             document.getElementById('conflictAlert').classList.remove('d-none');
             return;
         }

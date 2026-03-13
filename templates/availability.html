@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+
+{% block title %}Doctor Availability - SmartClinic OS{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="bi bi-calendar-check"></i> Doctor Availability</h2>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#availabilityModal" onclick="openNewAvailability()">
+            <i class="bi bi-plus-circle"></i> Add Availability
+        </button>
+    </div>
+    
+    <div class="card mb-3">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-4">
+                    <label for="filterDoctor" class="form-label">Filter by Doctor</label>
+                    <select class="form-select" id="filterDoctor" onchange="loadAvailability()">
+                        <option value="">All Doctors</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-body">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Doctor</th>
+                        <th>Day</th>
+                        <th>Start Time</th>
+                        <th>End Time</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="availabilityTable"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Availability Modal -->
+<div class="modal fade" id="availabilityModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Add Availability</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="availabilityForm">
+                    <input type="hidden" id="availabilityId">
+                    <div class="mb-3">
+                        <label for="doctorSelect" class="form-label">Doctor</label>
+                        <select class="form-select" id="doctorSelect" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="daySelect" class="form-label">Day of Week</label>
+                        <select class="form-select" id="daySelect" required>
+                            <option value="0">Monday</option>
+                            <option value="1">Tuesday</option>
+                            <option value="2">Wednesday</option>
+                            <option value="3">Thursday</option>
+                            <option value="4">Friday</option>
+                            <option value="5">Saturday</option>
+                            <option value="6">Sunday</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label for="startTime" class="form-label">Start Time</label>
+                        <input type="time" class="form-control" id="startTime" required>
+                    </div>
+                    <div class="mb-3">
+                        <label for="endTime" class="form-label">End Time</label>
+                        <input type="time" class="form-control" id="endTime" required>
+                    </div>
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="isAvailable" checked>
+                        <label class="form-check-label" for="isAvailable">
+                            Available
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="saveAvailability()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let doctors = [];
+
+async function loadDoctors() {
+    doctors = await fetch('/api/doctors').then(r => r.json());
+    
+    const doctorSelect = document.getElementById('doctorSelect');
+    doctorSelect.innerHTML = '<option value="">Select Doctor</option>' + 
+        doctors.map(d => `<option value="${d.id}">${d.name} - ${d.specialization}</option>`).join('');
+    
+    const filterDoctor = document.getElementById('filterDoctor');
+    filterDoctor.innerHTML = '<option value="">All Doctors</option>' + 
+        doctors.map(d => `<option value="${d.id}">${d.name}</option>`).join('');
+}
+
+async function loadAvailability() {
+    const doctorId = document.getElementById('filterDoctor').value;
+    const url = doctorId ? `/api/availability?doctor_id=${doctorId}` : '/api/availability';
+    
+    const availability = await fetch(url).then(r => r.json());
+    
+    const html = availability.map(a => `
+        <tr>
+            <td>${a.doctor_name}</td>
+            <td>${a.day_name}</td>
+            <td>${a.start_time}</td>
+            <td>${a.end_time}</td>
+            <td>
+                <span class="badge bg-${a.is_available ? 'success' : 'secondary'}">
+                    ${a.is_available ? 'Available' : 'Unavailable'}
+                </span>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick='editAvailability(${JSON.stringify(a)})'>
+                    <i class="bi bi-pencil"></i>
+                </button>
+                <button class="btn btn-sm btn-danger" onclick="deleteAvailability(${a.id})">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </td>
+        </tr>
+    `).join('');
+    
+    document.getElementById('availabilityTable').innerHTML = html || 
+        '<tr><td colspan="6" class="text-center text-muted">No availability set</td></tr>';
+}
+
+function openNewAvailability() {
+    document.getElementById('modalTitle').textContent = 'Add Availability';
+    document.getElementById('availabilityForm').reset();
+    document.getElementById('availabilityId').value = '';
+    document.getElementById('isAvailable').checked = true;
+}
+
+function editAvailability(availability) {
+    document.getElementById('modalTitle').textContent = 'Edit Availability';
+    document.getElementById('availabilityId').value = availability.id;
+    document.getElementById('doctorSelect').value = availability.doctor_id;
+    document.getElementById('daySelect').value = availability.day_of_week;
+    document.getElementById('startTime').value = availability.start_time;
+    document.getElementById('endTime').value = availability.end_time;
+    document.getElementById('isAvailable').checked = availability.is_available;
+    
+    new bootstrap.Modal(document.getElementById('availabilityModal')).show();
+}
+
+async function saveAvailability() {
+    const id = document.getElementById('availabilityId').value;
+    const data = {
+        doctor_id: parseInt(document.getElementById('doctorSelect').value),
+        day_of_week: parseInt(document.getElementById('daySelect').value),
+        start_time: document.getElementById('startTime').value,
+        end_time: document.getElementById('endTime').value,
+        is_available: document.getElementById('isAvailable').checked
+    };
+    
+    await fetch(id ? `/api/availability/${id}` : '/api/availability', {
+        method: id ? 'PUT' : 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    });
+    
+    bootstrap.Modal.getInstance(document.getElementById('availabilityModal')).hide();
+    loadAvailability();
+}
+
+async function deleteAvailability(id) {
+    if (!confirm('Delete this availability slot?')) return;
+    
+    await fetch(`/api/availability/${id}`, { method: 'DELETE' });
+    loadAvailability();
+}
+
+loadDoctors();
+loadAvailability();
+</script>
+{% endblock %}

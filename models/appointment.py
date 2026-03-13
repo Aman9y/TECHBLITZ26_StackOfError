@@ -10,7 +10,12 @@ class Appointment(db.Model):
     date = db.Column(db.Date, nullable=False)
     time = db.Column(db.Time, nullable=False)
     status = db.Column(db.String(20), default='booked')
+    is_followup = db.Column(db.Boolean, default=False)
+    parent_appointment_id = db.Column(db.Integer, db.ForeignKey('appointments.id'), nullable=True)
+    followup_notes = db.Column(db.Text, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    
+    parent_appointment = db.relationship('Appointment', remote_side=[id], backref='followup_appointments')
     
     def to_dict(self):
         return {
@@ -23,5 +28,8 @@ class Appointment(db.Model):
             'date': self.date.isoformat(),
             'time': self.time.strftime('%H:%M'),
             'status': self.status,
+            'is_followup': self.is_followup,
+            'parent_appointment_id': self.parent_appointment_id,
+            'followup_notes': self.followup_notes,
             'datetime': f"{self.date.isoformat()}T{self.time.strftime('%H:%M:%S')}"
         }

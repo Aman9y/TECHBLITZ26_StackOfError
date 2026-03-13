@@ -7,6 +7,7 @@ from routes.patient_routes import patient_bp
 from routes.appointment_routes import appointment_bp
 from routes.queue_routes import queue_bp
 from routes.waitlist_routes import waitlist_bp
+from routes.availability_routes import availability_bp
 from scheduler.reminder_scheduler import init_scheduler
 
 app = Flask(__name__)
@@ -22,6 +23,7 @@ app.register_blueprint(patient_bp)
 app.register_blueprint(appointment_bp)
 app.register_blueprint(queue_bp)
 app.register_blueprint(waitlist_bp)
+app.register_blueprint(availability_bp)
 
 init_scheduler(app)
 

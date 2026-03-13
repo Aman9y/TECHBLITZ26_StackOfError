@@ -12,7 +12,9 @@ def init_db(app):
 def seed_data():
     from models.user import User
     from models.doctor import Doctor
+    from models.doctor_availability import DoctorAvailability
     from werkzeug.security import generate_password_hash
+    from datetime import time
     
     if User.query.count() == 0:
         receptionist = User(
@@ -36,4 +38,16 @@ def seed_data():
             specialization='General Physician'
         )
         db.session.add(doctor)
+        db.session.commit()
+        
+        # Add default availability (Monday to Friday, 9 AM to 5 PM)
+        for day in range(5):  # 0=Monday to 4=Friday
+            availability = DoctorAvailability(
+                doctor_id=doctor.id,
+                day_of_week=day,
+                start_time=time(9, 0),
+                end_time=time(17, 0),
+                is_available=True
+            )
+            db.session.add(availability)
         db.session.commit()

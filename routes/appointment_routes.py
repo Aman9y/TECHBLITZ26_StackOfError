@@ -47,6 +47,21 @@ def create_appointment():
     appointment_date = datetime.fromisoformat(data['date']).date()
     appointment_time = datetime.fromisoformat(data['time']).time()
     
+    if not AppointmentService.check_availability(
+        data['doctor_id'],
+        appointment_date,
+        appointment_time
+    ):
+        available_slot = AppointmentService.find_nearest_slot(
+            data['doctor_id'],
+            appointment_date,
+            appointment_time
+        )
+        return jsonify({
+            'error': 'Doctor not available at this time',
+            'suggested_slot': available_slot
+        }), 409
+    
     conflict = AppointmentService.check_conflict(
         data['doctor_id'],
         appointment_date,
@@ -69,7 +84,10 @@ def create_appointment():
         patient_id=data['patient_id'],
         date=appointment_date,
         time=appointment_time,
-        status='booked'
+        status='booked',
+        is_followup=data.get('is_followup', False),
+        parent_appointment_id=data.get('parent_appointment_id'),
+        followup_notes=data.get('followup_notes', '')
     )
     db.session.add(appointment)
     db.session.commit()
