@@ -4,7 +4,7 @@ from models.queue import Queue
 class QueueService:
     
     @staticmethod
-    def checkin_patient(patient_id, appointment_id=None, is_emergency=False):
+    def checkin_patient(patient_id, appointment_id=None, is_emergency=False, auto_checked_in=False):
         max_position = db.session.query(db.func.max(Queue.position)).filter(
             Queue.status.in_(['waiting', 'in_consultation'])
         ).scalar() or 0
@@ -16,7 +16,8 @@ class QueueService:
             appointment_id=appointment_id,
             position=position,
             status='waiting',
-            is_emergency=is_emergency
+            is_emergency=is_emergency,
+            auto_checked_in=auto_checked_in
         )
         db.session.add(queue_entry)
         db.session.commit()

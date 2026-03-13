@@ -3,6 +3,7 @@ from datetime import datetime, timedelta, date
 from models.appointment import Appointment
 from models.reminder_log import ReminderLog
 from services.reminder_service import ReminderService
+from services.auto_checkin_service import AutoCheckinService
 from database import db
 
 def check_and_send_reminders():
@@ -50,6 +51,9 @@ def check_and_send_reminders():
                     print(f"Sending 2h reminder for appointment #{appointment.id}")
                     ReminderService.send_appointment_reminder(appointment, 2)
         
+        # Auto check-in patients
+        AutoCheckinService.auto_checkin_appointments()
+        
         print(f"[{now.strftime('%H:%M:%S')}] Reminder check completed")
 
 scheduler = BackgroundScheduler()
@@ -64,4 +68,4 @@ def init_scheduler(app):
     scheduler.add_job(func=check_and_send_reminders, trigger="interval", minutes=1)
     scheduler.start()
     scheduler_started = True
-    print("✓ Reminder scheduler started (runs every 1 minute)")
+    print("✓ Reminder & Auto Check-in scheduler started (runs every 1 minute)")

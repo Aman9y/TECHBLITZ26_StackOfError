@@ -90,6 +90,7 @@ async function loadQueue() {
                 <h5 class="mb-0">${i + 1}. ${q.patient_name}</h5>
                 <small class="text-muted">Position: ${q.position}</small>
                 ${q.is_emergency ? '<span class="badge bg-danger ms-2">Emergency</span>' : ''}
+                ${q.auto_checked_in ? '<span class="badge bg-info ms-2"><i class="bi bi-robot"></i> Auto</span>' : ''}
             </div>
             <div>
                 {% if session.role == 'doctor' %}

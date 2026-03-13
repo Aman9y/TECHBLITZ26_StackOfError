@@ -10,6 +10,7 @@ class Queue(db.Model):
     position = db.Column(db.Integer, nullable=False)
     status = db.Column(db.String(20), default='waiting')
     is_emergency = db.Column(db.Boolean, default=False)
+    auto_checked_in = db.Column(db.Boolean, default=False)
     checked_in_at = db.Column(db.DateTime, default=datetime.utcnow)
     
     patient = db.relationship('Patient', backref='queue_entries')
@@ -24,5 +25,6 @@ class Queue(db.Model):
             'position': self.position,
             'status': self.status,
             'is_emergency': self.is_emergency,
+            'auto_checked_in': self.auto_checked_in,
             'checked_in_at': self.checked_in_at.isoformat() if self.checked_in_at else None
         }

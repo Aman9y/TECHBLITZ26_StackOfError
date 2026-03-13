@@ -115,6 +115,7 @@ async function loadDashboard() {
             <div>
                 <strong>${i + 1}. ${q.patient_name}</strong>
                 ${q.is_emergency ? '<span class="badge bg-danger ms-2">Emergency</span>' : ''}
+                ${q.auto_checked_in ? '<span class="badge bg-info ms-2"><i class="bi bi-robot"></i> Auto</span>' : ''}
                 <br><small class="text-muted">${q.status}</small>
             </div>
             ${q.status === 'in_consultation' ? `
